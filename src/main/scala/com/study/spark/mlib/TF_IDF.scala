@@ -13,7 +13,8 @@ object TF_IDF {
         .config("spark.sql.warehouse.dir", "D:\\Data\\spark-warehouse")
         .getOrCreate()
 
-      val sc = spark.sparkContext //创建环境变量实例                              	//创建环境变量实例
+      val sc = spark.sparkContext //创建环境变量实例
+
     val documents = sc.textFile("D:\\Data\\tf_idf.txt").map(_.split(" ").toSeq)		//读取数据文件
 
     val hashingTF = new HashingTF()							//首先创建TF计算实例
