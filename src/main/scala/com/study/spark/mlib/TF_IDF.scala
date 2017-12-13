@@ -1,6 +1,7 @@
 package com.study.spark.mlib
 
 import org.apache.spark.mllib.feature.{HashingTF, IDF}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -15,17 +16,18 @@ object TF_IDF {
 
       val sc = spark.sparkContext //创建环境变量实例
 
-    val documents = sc.textFile("D:\\Data\\tf_idf.txt").map(_.split(" ").toSeq)		//读取数据文件
+    val documents:RDD[Seq[String]] = sc.textFile("D:\\Data\\tf_idf.txt").map(_.split(" ").toSeq)		//读取数据文件
 
       documents.foreach(println)
 
       printf("<<<<<<<<<<<<<<<")
-
+    documents
     val hashingTF = new HashingTF()							//首先创建TF计算实例
     val tf = hashingTF.transform(documents)			//计算文档TF值
     val idf = new IDF().fit(tf)									//创建IDF实例并计算
 
     val tf_idf= idf.transform(tf)									//计算TF_IDF词频
+
     println()
     tf_idf.foreach(println)										//打印结果
 

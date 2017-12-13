@@ -1,19 +1,17 @@
 package com.study.spark.mlib
 
-import com.study.spark.api.VectorStudy.splitWordToSeq
-import com.study.spark.mlib.similarArticleAnalyze.splitWordToSeq
 import org.ansj.domain.Term
 import org.ansj.splitWord.analysis.ToAnalysis
 import org.apache.spark.mllib.classification.NaiveBayes
-import org.apache.spark.sql.{Row, SparkSession}
-import org.apache.spark.mllib.feature.{HashingTF, IDF, IDFModel}
+import org.apache.spark.mllib.feature.{HashingTF, IDF}
 import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
+
 /**
   * 文章格式: typeId,正文
   * Created by piguanghua on 2017/12/11.
   */
-object TestNaiveBayes {
+object TestNaiveBayesCluster {
 	case class RawDataRecord(category: String, text: String)
 
 	def  splitWordToSeq(news:String)={
@@ -31,14 +29,18 @@ object TestNaiveBayes {
 		val spark = SparkSession
 		  .builder
 		  .appName(s"${this.getClass.getSimpleName}")
-		  .master("local[*]")
-		  .config("spark.sql.warehouse.dir", "D:\\Data\\spark-warehouse")
+		 /* .master("local[*]")
+		  .config("spark.sql.warehouse.dir", "D:\\Data\\spark-warehouse")*/
 		  .getOrCreate()
-		import spark.implicits._
 		val sc = spark.sparkContext //创建环境变量实例
 
-		val src = sc.textFile("D:\\Data\\native_bayes.txt").map(x => x.split("==").toSeq)
-		val trainRdd= src.map(x => (x(0).toDouble,splitWordToSeq(x(1))))
+		val src = sc.textFile("hdfs://spark1:9000/ml/text/span_forum2.txt").map(x => x.split("==").toSeq)
+		val trainRdd= src
+		  .map(
+			x =>{
+				(x(0).toDouble,splitWordToSeq(x(1)))
+			}
+		)
 		//tf-idf
 		val hashingTF = new HashingTF(Math.pow(2, 18).toInt)
 		//计算TF
@@ -55,28 +57,27 @@ object TestNaiveBayes {
 			LabeledPoint(ele._1, ele._2)
 		})
 
-		val Array(training, test) = dataRdd.randomSplit(Array(0.6, 0.4))
+		val Array(training, test) = dataRdd.randomSplit(Array(0.8, 0.2))
 		val model = NaiveBayes.train(training, lambda = 1.0, modelType = "multinomial")
 
-	/*	val predictionAndLabel = test.map(p => (model.predict(p.features), p.label))
+		val predictionAndLabel = test.map(p => (model.predict(p.features), p.label))
 		val accuracy = 1.0 * predictionAndLabel.filter(x => x._1 == x._2).count() / test.count()
-		println(accuracy)*/
+		println(accuracy)
+		model.save(sc, "hdfs://192.168.152.138:9000/ml/model")
 
 
-		val res = sc.textFile("D:\\Data\\native_demo.txt").map(x => x.split("==").toSeq)
-		val trainRdd1:RDD[(Double,Array[String])]= res.map(x => (x(0).toDouble,splitWordToSeq(x(1))))
+		/*val res = sc.textFile("D:\\Data\\native_demo.txt").map(x => x.split("==").toSeq)
+		val trainRdd1= res.map(x => (x(0).toDouble,splitWordToSeq(x(1))))
 		trainRdd1.foreach(x=>println( "trainRdd1:" + x ))
 		//计算TF
-		val newSTF1= trainRdd1.map {
+		val newSTF1 = trainRdd1.map {
 			case (num, seq) =>
 				val tf = hashingTF.transform(seq)
 				(num, tf)
 		}
-		//newSTF RDD[(Double,Vector)]
 
-		/*val idfs1:IDFModel = new IDF().fit(newSTF1.values)
-		val newsIDF1 = newSTF1.mapValues(v =>  idfs1.transform(v))
-
+		val idfs1 = new IDF().fit(newSTF1.values)
+		val newsIDF1 = newSTF1.mapValues(v => idfs1.transform(v))
 		val dataRdd1 = newsIDF1.map(ele=>{
 			LabeledPoint(ele._1, ele._2)
 		})
@@ -85,20 +86,10 @@ object TestNaiveBayes {
 			println("predict" + model.predict(p.features))
 			(model.predict(p.features), p.label)
 		})
-		predictionAndLabel.take(0).foreach(ele=>println("result："+ele._1))
-		println(predictionAndLabel.foreach(x=>">>>>><<<<<<<<<<<<" + x._2))*/
 
-		val stringData = "我从放假哦第三空间发大水了看法简单实习近平例会计分录卡萨范德萨发大水看风景了看法"
-		val data = splitWordToSeq(stringData)
-
-		val hashingTf = new HashingTF(Math.pow(2, 18).toInt)
-		val tfs = hashingTf.transform(data)
-		val rddVector = sc.parallelize(Seq(tfs))
-		val idf = new IDF().fit(rddVector)
-
-		val tf_idf= idf.transform(tfs)
-		println("result"  + model.predict(tf_idf))
-
+		predictionAndLabel.foreach(ele=>{
+			println("------------" + ele._1)
+		})*/
 
 
 /*
