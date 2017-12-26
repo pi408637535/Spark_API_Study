@@ -5,6 +5,7 @@ import org.ansj.splitWord.analysis.ToAnalysis
 import org.apache.spark.mllib.classification.NaiveBayes
 import org.apache.spark.mllib.feature.{HashingTF, IDF}
 import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
 /**
@@ -34,13 +35,15 @@ object TestNaiveBayesCluster {
 		  .getOrCreate()
 		val sc = spark.sparkContext //创建环境变量实例
 
-		val src = sc.textFile("hdfs://spark1:9000/ml/text/span_forum2.txt").map(x => x.split("==").toSeq)
+		val src:RDD[Seq[String]] = sc.textFile("hdfs://spark1:9000/ml/text/span_forum2.txt").map(x => x.split("==").toSeq)
+
 		val trainRdd= src
 		  .map(
 			x =>{
 				(x(0).toDouble,splitWordToSeq(x(1)))
 			}
 		)
+
 		//tf-idf
 		val hashingTF = new HashingTF(Math.pow(2, 18).toInt)
 		//计算TF
